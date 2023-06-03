@@ -1,8 +1,10 @@
 package com.example.formsandroidtraining.add_edit_question
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,7 @@ interface QuestionTypeUiProperties {
     val label: String
 }
 
+@Immutable
 data class QuestionTypeUIProperty(
     private val type: KClass<out QuestionTypeUiState>,
     val label: String,
@@ -123,7 +126,7 @@ sealed interface QuestionTypeUiState {
                         type.createInstance()
                     }
                 )
-            }
+            }.toImmutableList()
 
     }
 }
