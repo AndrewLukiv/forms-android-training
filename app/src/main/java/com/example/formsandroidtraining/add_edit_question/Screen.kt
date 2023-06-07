@@ -1,14 +1,25 @@
 package com.example.formsandroidtraining.add_edit_question
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -16,134 +27,163 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TextQuestionSettings(viewModel: QuestionViewModel= hiltViewModel()) {
+fun CreateOrEditQuestionScreen(
+    onQuestionSaved: () -> Unit,
+    viewModel: QuestionViewModel = hiltViewModel()
+) {
     val questionUiState by viewModel.questionUiState.collectAsStateWithLifecycle()
-    val settingsUiState by viewModel.typeUiState.collectAsStateWithLifecycle()
-    val questionTypes = remember {
-        QuestionTypeUiState.getTypes()
-    }
-    Column {
-        TextField(
-            value = questionUiState.title,
-            onValueChange = viewModel::updateTitle,
-            label = { Text("Title") }
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = questionUiState.isRequired,
-                onCheckedChange = viewModel::updateIsRequired
-            )
-            Text(text = "Required question")
+    LaunchedEffect(questionUiState.isSaved) {
+        if (questionUiState.isSaved) {
+            onQuestionSaved()
         }
-        questionTypes.forEach {
+    }
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { viewModel.saveQuestion() }) {
+                Icon(Icons.Filled.Done, contentDescription = "Save question")
+            }
+        }
+    ) {
+        Column {
+            TextField(value = questionUiState.title,
+                onValueChange = viewModel::updateTitle,
+                label = { Text("Title") })
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = it.isInstance(settingsUiState),
-                    onClick = { viewModel.updateQuestionTypeData(it.defaultValue) }
+                Checkbox(
+                    checked = questionUiState.isRequired,
+                    onCheckedChange = viewModel::updateIsRequired
                 )
-                Text(it.label)
+                Text(text = "Required question")
+            }
+            questionUiState.types.forEach { it ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = questionUiState.type == it.type,
+                        onClick = {
+                            viewModel.changeQuestionType(it.type)
+                        },
+                    )
+                    Text(it.label)
+                }
+            }
+            val updaterContext = remember(viewModel) {
+                QuestionSettingsUpdaterContext {
+                    viewModel.updateQuestionTypeData(it)
+                }
+            }
+            with(updaterContext) {
+                when (questionUiState.settings) {
+                    is QuestionTypeUiState.Number ->
+                        NumberQuestionSettings(questionUiState.settings as QuestionTypeUiState.Number)
+
+                    is QuestionTypeUiState.Text ->
+                        TextQuestionSettings(questionUiState.settings as QuestionTypeUiState.Text)
+                }
             }
         }
-        val onUpdate = remember {
-            UpdatableQuestionSettingsUi { updater: QuestionTypeUpdater ->
-                viewModel.updateQuestionTypeData(updater)
-            }
-        }
-        settingsUiState.QuestionTypeSettings(onUpdate)
-
-//        when (typeUiState) {
-//            is QuestionTypeUiState.Number -> NumberQuestionSettings(
-//                typeUiState as QuestionTypeUiState.Number,
-//                onUpdate
-//            )
-//
-//            is QuestionTypeUiState.Text -> TextQuestionSettings(
-//                typeUiState as QuestionTypeUiState.Text,
-//                onUpdate
-//            )
-//        }
-
     }
+}
+
+@Immutable
+fun interface QuestionSettingsUpdaterContext : (QuestionTypeUpdater) -> Unit {
+    fun <T> ((T) -> QuestionTypeUpdater).callback(): (T) -> Unit =
+        {
+            this@QuestionSettingsUpdaterContext(this(it))
+        }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdatableQuestionSettingsUi.TextQuestionSettings(
-    textQuestionUiState: QuestionTypeUiState.Text,
+fun QuestionSettingsUpdaterContext.TextQuestionSettings(
+    textQuestionUiState: QuestionTypeUiState.Text
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Checkbox(
             checked = textQuestionUiState.isSingleLine,
-            onCheckedChange = textQuestionUiState::updateSingleLine.callback()
+            onCheckedChange = TextQuestionSettings::updateSingleLine.callback(),
         )
         Text(text = "Single line")
     }
     Row {
         Checkbox(
             checked = textQuestionUiState.useMin,
-            onCheckedChange = textQuestionUiState::updateUseMin.callback()
+            onCheckedChange = TextQuestionSettings::updateUseMin.callback(),
         )
         TextField(
             value = textQuestionUiState.min,
             enabled = textQuestionUiState.useMin,
-            onValueChange = textQuestionUiState::updateMin.callback(),
-//            isError = wrongMinLength,
+            onValueChange = TextQuestionSettings::updateMin.callback(),
+            isError = textQuestionUiState.minErrorMessage != null,
+            supportingText = {
+                if (textQuestionUiState.minErrorMessage != null && textQuestionUiState.useMin) {
+                    Text(textQuestionUiState.minErrorMessage)
+                }
+            },
             label = { Text(text = "Minimum characters") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true
         )
 
     }
     Row {
         Checkbox(
             checked = textQuestionUiState.useMax,
-            onCheckedChange = textQuestionUiState::updateUseMax.callback()
+            onCheckedChange = TextQuestionSettings::updateUseMax.callback()
         )
         TextField(
             value = textQuestionUiState.max,
             enabled = textQuestionUiState.useMax,
-            onValueChange = textQuestionUiState::updateMax.callback(),
-//            isError = wrongMaxLength,
+            onValueChange = TextQuestionSettings::updateMax.callback(),
+            isError = textQuestionUiState.maxErrorMessage != null,
+            supportingText = {
+                if (textQuestionUiState.maxErrorMessage != null && textQuestionUiState.useMax) {
+                    Text(textQuestionUiState.maxErrorMessage)
+                }
+            },
             label = { Text(text = "Maximum characters") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true
         )
-
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdatableQuestionSettingsUi.NumberQuestionSettings(
+fun QuestionSettingsUpdaterContext.NumberQuestionSettings(
     numberQuestionUiState: QuestionTypeUiState.Number,
 ) {
     Row {
         Checkbox(
             checked = numberQuestionUiState.useMin,
-            onCheckedChange = numberQuestionUiState::updateUseMin.callback()
+            onCheckedChange = NumberQuestionSettings::updateUseMin.callback()
         )
         TextField(
             value = numberQuestionUiState.min,
             enabled = numberQuestionUiState.useMin,
-            onValueChange = numberQuestionUiState::updateMin.callback(),
+            onValueChange = NumberQuestionSettings::updateMin.callback(),
 //            isError = wrongMinLength,
             label = { Text(text = "Minimum value") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true
         )
 
     }
     Row {
         Checkbox(
             checked = numberQuestionUiState.useMax,
-            onCheckedChange = numberQuestionUiState::updateUseMax.callback()
+            onCheckedChange = NumberQuestionSettings::updateUseMax.callback()
         )
         TextField(
             value = numberQuestionUiState.max,
             enabled = numberQuestionUiState.useMax,
-            onValueChange = numberQuestionUiState::updateMax.callback(),
+            onValueChange = NumberQuestionSettings::updateMax.callback(),
 //            isError = wrongMaxLength,
             label = { Text(text = "Maximum value") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true
         )
 
     }

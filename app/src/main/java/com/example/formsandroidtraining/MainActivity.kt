@@ -10,18 +10,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.formsandroidtraining.add_edit_question.QuestionTypeUiState
 import com.example.formsandroidtraining.add_edit_question.TextQuestionSettings
 import com.example.formsandroidtraining.ui.theme.FormsAndroidTrainingTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val questionsType: QuestionsType =
-            Text(minLength = null, maxLength = null, singleLine = true)
-        val json = Json.encodeToString(questionsType)
-        println(json)
+        val v1: QuestionTypeUiState = QuestionTypeUiState.Text()
+        val v2: QuestionTypeUiState = QuestionTypeUiState.Text()
+        println(v1 == v2)
         setContent {
             FormsAndroidTrainingTheme {
                 // A surface container using the 'background' color from the theme
@@ -29,7 +31,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TextQuestionSettings()
+                    FormsNavGraph()
                 }
             }
         }
