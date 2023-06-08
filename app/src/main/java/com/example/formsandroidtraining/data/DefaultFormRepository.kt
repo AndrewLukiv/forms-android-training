@@ -3,6 +3,7 @@ package com.example.formsandroidtraining.data
 import com.example.formsandroidtraining.Form
 import com.example.formsandroidtraining.Question
 import com.example.formsandroidtraining.data.local.FormDao
+import com.example.formsandroidtraining.data.local.FormsDatabase
 import com.example.formsandroidtraining.data.local.LocalForm
 import com.example.formsandroidtraining.data.local.QuestionDao
 import com.example.formsandroidtraining.data.local.toExternal
@@ -24,6 +25,7 @@ import javax.inject.Singleton
 class DefaultFormRepository @Inject constructor(
     private val formDao: FormDao,
     private val questionDao: QuestionDao,
+    private val db: FormsDatabase,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     @ApplicationScope private val scope: CoroutineScope,
@@ -41,13 +43,22 @@ class DefaultFormRepository @Inject constructor(
 
     override suspend fun createQuestion(questionModel: QuestionModel): String {
         val questionId = createUUID()
-        updateQuestion(questionId, questionModel)
+        withContext(ioDispatcher) {
+            val questionIndex =
+                questionDao.getFormLastQuestionIndex(questionModel.formId)?.let { it.toUInt() + 1u }
+                    ?: 0u
+            val question = questionModel.toLocal(questionId, questionIndex)
+            questionDao.upsert(question)
+        }
         return questionId
     }
 
     override suspend fun updateQuestion(id: String, questionModel: QuestionModel) {
-        val question = questionModel.toLocal(id)
-        questionDao.upsert(question)
+        withContext(ioDispatcher) {
+            val questionIndex = questionDao.getIndexById(id).toUInt()
+            val question = questionModel.toLocal(id, questionIndex)
+            questionDao.upsert(question)
+        }
     }
 
     override suspend fun getQuestion(id: String): Question =

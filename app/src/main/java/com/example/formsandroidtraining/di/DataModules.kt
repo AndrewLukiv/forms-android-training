@@ -33,7 +33,8 @@ object DatabaseModule {
             context.applicationContext,
             FormsDatabase::class.java,
             "forms.db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun providesFormDao(database: FormsDatabase): FormDao = database.formDao()

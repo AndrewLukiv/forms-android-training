@@ -58,7 +58,7 @@ fun EditQuestionsListScreen(
                     loadedUiState.questions.forEach {
                         item(it.id) {
                             Text(
-                                it.title,
+                                "${it.index} - ${it.title}",
                                 modifier = Modifier.clickable { onAddOrEditQuestion(it.id) })
                         }
                     }

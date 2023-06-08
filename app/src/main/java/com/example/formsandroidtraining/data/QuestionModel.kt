@@ -11,10 +11,11 @@ data class QuestionModel(
     val type: QuestionsType
 )
 
-fun QuestionModel.toLocal(id: String) =
+fun QuestionModel.toLocal(id: String, index: UInt) =
     Question(
         id = id,
         formId = formId,
+        index = index,
         title = title,
         required = required,
         type = type

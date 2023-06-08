@@ -9,25 +9,28 @@ import kotlinx.serialization.json.Json
 @Entity(tableName = "questions")
 data class LocalQuestion(
     @PrimaryKey val id: String,
-    val formId:String,
+    val formId: String,
+    val i: Int,
     val title: String,
     val isRequired: Boolean,
     val settings: String
 )
 
 fun Question.toLocal() = LocalQuestion(
-    id=id,
-    formId=formId,
-    title=title,
+    id = id,
+    formId = formId,
+    i = index.toInt(),
+    title = title,
     isRequired = required,
     settings = Json.encodeToString(type)
 )
 
-fun LocalQuestion.toExternal()=
+fun LocalQuestion.toExternal() =
     Question(
-        id=id,
-        formId=formId,
-        title=title,
+        id = id,
+        formId = formId,
+        index = i.toUInt(),
+        title = title,
         required = isRequired,
         type = Json.decodeFromString(settings)
     )
